@@ -23,15 +23,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-bcyp$yp+=lj-z-)=%7xcfdkjp0rqb9w^yok*lj*wb6ph@b-vz1"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False # Cambiado a False para producción
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS configurado para aceptar peticiones desde cualquier host en producción
+ALLOWED_HOSTS = ['*', '127.0.0.1']
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'corsheaders',
+    'corsheaders', # Asegura que corsheaders esté al inicio
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -45,7 +46,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware', # Middleware de CORS
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -120,14 +121,24 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+# Directorio donde 'collectstatic' reunirá todos los archivos estáticos
+# CRUCIAL para el despliegue en Render/servidores WSGI
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+# ====================================================================
+# CONFIGURACIÓN DE DESPLIEGUE (CORS)
+# ====================================================================
 
-# Permitir que React (puerto 5173) hable con Django
+# Permitir que React hable con Django
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    
+    # ⚠️ AÑADE AQUÍ LA URL DE TU FRONTEND DE VERCEL/NETLIFY DESPUÉS DE OBTENERLA
+    # EJEMPLO: "https://nombre-de-tu-app.vercel.app", 
 ]

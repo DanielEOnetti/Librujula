@@ -1,16 +1,16 @@
 # ==============================
 # STAGE 1: Build y dependencias
-# (Usamos una imagen temporal para instalar las librerías grandes)
 # ==============================
 FROM python:3.11 AS builder
 
 # Establece el directorio de trabajo
 WORKDIR /app
 
-# Instala las herramientas básicas necesarias para compilar librerías
-RUN apt-get update && apt-get install -y build-essential libatlas-base-dev
+# 1. Actualizar el sistema e instalar dependencias de compilación
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends build-essential libatlas-base-dev
 
-# Copia e instala Gunicorn y las librerías (sentence-transformers)
+# Copia los archivos de dependencia e instálalos
 COPY requirements.txt /app/
 
 # Instalación optimizada sin caché

@@ -7,8 +7,9 @@ FROM python:3.11 AS builder
 WORKDIR /app
 
 # 1. Actualizar el sistema e instalar dependencias de compilación
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends build-essential libatlas-base-dev
+# CORRECCIÓN: Reemplazamos libatlas-base-dev (obsoleto) por libopenblas-dev (moderno)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential libopenblas-dev
 
 # Copia los archivos de dependencia e instálalos
 COPY requirements.txt /app/

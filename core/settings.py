@@ -11,8 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-import os # <-- NUEVO: Para leer variables de entorno
-import dj_database_url # <-- NUEVO: Para parsear la URL de la base de datos
+import os 
+import dj_database_url 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-bcyp$yp+=lj-z-)=%7xcfdkjp0rqb9w^yok*lj*wb6ph@b-vz1"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False # Se mantiene en False para la configuración base de producción
+DEBUG = False 
 
 # ALLOWED_HOSTS configurado para aceptar peticiones desde cualquier host en producción
 ALLOWED_HOSTS = ['*', '127.0.0.1']
@@ -34,7 +34,7 @@ ALLOWED_HOSTS = ['*', '127.0.0.1']
 # Application definition
 
 INSTALLED_APPS = [
-    'corsheaders', # Asegura que corsheaders esté al inicio
+    'corsheaders', 
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -48,7 +48,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    'corsheaders.middleware.CorsMiddleware', # Middleware de CORS
+    'corsheaders.middleware.CorsMiddleware', 
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -88,10 +88,10 @@ if 'DATABASE_URL' in os.environ:
     DATABASES = {
         'default': dj_database_url.config(
             conn_max_age=600,
-            ssl_require=True
+            # 💥 CORRECCIÓN: Eliminamos ssl_require=True para evitar el error 'SSL EOF detected'
         )
     }
-    # En producción, asegúrate de que DEBUG esté en False
+    # En producción, asegurate de que DEBUG esté en False
     DEBUG = False 
 
 # Si no existe, usamos SQLite localmente (Modo Desarrollo)

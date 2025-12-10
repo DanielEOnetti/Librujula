@@ -49,13 +49,12 @@ _modelo_embeddings = None
 def obtener_modelo_embeddings():
     """Carga el modelo solo cuando se necesita (lazy loading)"""
     global _modelo_embeddings
+    
+    # 💥 INICIO DE MODIFICACIÓN DE EMERGENCIA PARA EL DESPLIEGUE 💥
+    # Se deshabilita el modelo pesado de IA para evitar el límite de 8GB
     if _modelo_embeddings is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-            _modelo_embeddings = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-        except ImportError:
-            print("⚠️ sentence-transformers no instalado. Usando fallback básico.")
-            _modelo_embeddings = False
+        print("⚠️ Embeddings semánticos deshabilitados en producción por límite de tamaño. Usando fallback básico (keywords).")
+        _modelo_embeddings = False
     return _modelo_embeddings
 
 # ============================================

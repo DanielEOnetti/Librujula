@@ -4,3 +4,5 @@ django-cors-headers
 requests
 numpy
 aiohttp
+psycopg2-binary
+dj-database-url

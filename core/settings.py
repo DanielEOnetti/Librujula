@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os # <-- NUEVO: Para leer variables de entorno
+import dj_database_url # <-- NUEVO: Para parsear la URL de la base de datos
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-bcyp$yp+=lj-z-)=%7xcfdkjp0rqb9w^yok*lj*wb6ph@b-vz1"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False # Cambiado a False para producción
+DEBUG = False # Se mantiene en False para la configuración base de producción
 
 # ALLOWED_HOSTS configurado para aceptar peticiones desde cualquier host en producción
 ALLOWED_HOSTS = ['*', '127.0.0.1']
@@ -77,12 +79,32 @@ WSGI_APPLICATION = "core.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# ====================================================================
+# CONFIGURACIÓN DE BASE DE DATOS (PostgreSQL para Producción / SQLite para Desarrollo)
+# ====================================================================
+
+# Si existe la variable de entorno DATABASE_URL (establecida por Fly.io)
+if 'DATABASE_URL' in os.environ:
+    DATABASES = {
+        'default': dj_database_url.config(
+            conn_max_age=600,
+            ssl_require=True
+        )
     }
-}
+    # En producción, asegúrate de que DEBUG esté en False
+    DEBUG = False 
+
+# Si no existe, usamos SQLite localmente (Modo Desarrollo)
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+    # Mantener DEBUG en True para desarrollo local
+    DEBUG = True 
+    
 
 
 # Password validation
@@ -122,7 +144,7 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 # Directorio donde 'collectstatic' reunirá todos los archivos estáticos
-# CRUCIAL para el despliegue en Render/servidores WSGI
+# CRUCIAL para el despliegue en Fly.io
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type

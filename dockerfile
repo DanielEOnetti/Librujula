@@ -7,7 +7,7 @@ FROM python:3.11 AS builder
 WORKDIR /app
 
 # 1. Actualizar el sistema e instalar dependencias de compilación
-# CORRECCIÓN: Reemplazamos libatlas-base-dev (obsoleto) por libopenblas-dev (moderno)
+# Usamos libopenblas-dev (moderno)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential libopenblas-dev
 
@@ -18,7 +18,7 @@ COPY requirements.txt /app/
 RUN pip install --no-cache-dir gunicorn
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Limpieza crucial: Eliminar el caché de pip y el posible caché de PyTorch/HuggingFace
+# Limpieza para reducir el tamaño final de la imagen
 RUN rm -rf /root/.cache/pip \
     && rm -rf /root/.cache/torch \
     && rm -rf /tmp/* \
@@ -45,5 +45,6 @@ RUN python manage.py collectstatic --no-input
 # Exponer el puerto por defecto de Fly.io
 EXPOSE 8080
 
-# Comando de inicio: Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "core.wsgi:application"]
+# 💥 INSTRUCCIÓN CRUCIAL: Ejecuta 'migrate' para inicializar la DB SQLite 
+# antes de iniciar Gunicorn. Esto previene el fallo en runtime.
+CMD python manage.py migrate && gunicorn --bind 0.0.0.0:8080 --workers 1 --threads 1 core.wsgi:application

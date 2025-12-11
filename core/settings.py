@@ -158,8 +158,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ====================================================================
 
 # Permitir que React hable con Django
+# 💥 FIX DE EMERGENCIA: Esto permite peticiones desde CUALQUIER dominio
+CORS_ALLOW_ALL_ORIGINS = True 
+
+# Comenta o borra la lista, ya que la línea de arriba la anula.
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    
-    "https://librujula.vercel.app"
+    # "http://localhost:5173",
+    # "https://librujula.vercel.app" 
 ]

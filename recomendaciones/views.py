@@ -6,7 +6,7 @@ import re
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.core.cache import cache
-from collections import Counter
+# from collections import Counter # No se usa
 from functools import lru_cache
 import numpy as np
 
@@ -16,22 +16,22 @@ OPEN_LIBRARY_URL = "https://openlibrary.org"
 
 
 # ============================================
-# CONSTANTES DE AJUSTE DEL ALGORITMO
+# CONSTANTES DE AJUSTE DEL ALGORITMO (MEJORADO)
 # ============================================
 
 # Scoring (La suma de los máximos es aproximadamente el score base máximo)
 SCORE_AUTHOR_MATCH = 30
-SCORE_CATEGORY_MAX = 15
-SCORE_SIMILARITY_MAX = 30 # Máximo para embeddings / fallback keywords
-SCORE_SERIES_BONUS = 20
-SCORE_RATING_BASE_MAX = 15 # Basado en la nota 0-5
-SCORE_RATING_COUNT_MAX = 15 # Basado en la cantidad de ratings
+SCORE_CATEGORY_MAX = 25  # ⬅️ Aumentado (más peso a lo fiable)
+SCORE_SIMILARITY_MAX = 15  # ⬅️ Reducido (el fallback keyword es débil)
+SCORE_SERIES_BONUS = 30  # ⬅️ Aumentado (máxima relevancia)
+SCORE_RATING_BASE_MAX = 15 
+SCORE_RATING_COUNT_MAX = 15 
 
 # Límites de Diversidad (para asegurar_diversidad_avanzada)
 DIVERSITY_MAX_AUTHOR = 2
 DIVERSITY_MAX_DECADA = 3
 DIVERSITY_MAX_SERIE = 2
-FINAL_RECOMMENDATION_LIMIT = 4 # Límite de recomendaciones finales
+FINAL_RECOMMENDATION_LIMIT = 4  # ⬅️ Aumentado para más resultados
 
 # Palabras vacías (Stop Words) para extracción de keywords
 STOP_WORDS = {
@@ -76,10 +76,10 @@ def cache_inteligente(key, data, tipo='normal'):
     Cache con TTL variable según tipo de datos
     """
     ttls = {
-        'ratings': 86400,      # 24h - ratings cambian poco
-        'busqueda': 3600,      # 1h - búsquedas actuales
-        'usuario': 1800,       # 30min - comportamiento usuario
-        'trending': 600,       # 10min - tendencias actuales
+        'ratings': 86400,       # 24h - ratings cambian poco
+        'busqueda': 3600,       # 1h - búsquedas actuales
+        'usuario': 1800,        # 30min - comportamiento usuario
+        'trending': 600,        # 10min - tendencias actuales
         'normal': 3600
     }
     
@@ -115,6 +115,8 @@ def calcular_embedding(texto):
     """
     modelo = obtener_modelo_embeddings()
     if modelo and modelo is not False:
+        # Esto requiere que el modelo sea de sentence-transformers o similar.
+        # Si está deshabilitado (_modelo_embeddings = False), retorna None.
         return modelo.encode(texto)
     return None
 
@@ -156,10 +158,10 @@ def calcular_similitud_semantica(descripcion_fuente, descripcion_candidato):
         return similitud_keywords_fallback(desc1, desc2)
     
     # Similitud coseno
-    # Usamos np.float() para asegurar compatibilidad de tipos
+    # Usamos np.dot para el producto escalar y np.linalg.norm para la magnitud
     similitud = np.dot(emb1, emb2) / (np.linalg.norm(emb1) * np.linalg.norm(emb2))
     
-    # Convertir a puntos (0-30)
+    # Convertir a puntos (0-SCORE_SIMILARITY_MAX)
     return float(similitud) * SCORE_SIMILARITY_MAX # Usar constante
 
 
@@ -197,11 +199,14 @@ def detectar_serie(titulo):
     return None, None
 
 
+# La función `buscar_libros_misma_serie` usa llamadas síncronas de `requests`, 
+# por lo que no debería usarse en el contexto de `asyncio` a menos que se ejecute 
+# en un executor. No se usa en la vista principal, por lo que se mantiene como síncrona.
 def buscar_libros_misma_serie(titulo_fuente, autor):
     """
     Busca otros libros de la misma serie
     """
-    nombre_serie, numero = detectar_serie(titulo_fuente)
+    nombre_serie, _ = detectar_serie(titulo_fuente)
     
     if not nombre_serie:
         return []
@@ -430,7 +435,8 @@ def generar_fallback_inteligente(libro_fuente, autor, candidatos_actuales):
     """
     Si tenemos pocas recomendaciones (<4), busca alternativas inteligentes
     """
-    if len(candidatos_actuales) >= 4:
+    # Usa la constante FINAL_RECOMMENDATION_LIMIT para el check
+    if len(candidatos_actuales) >= FINAL_RECOMMENDATION_LIMIT:
         return []
     
     fallback_candidatos = []
@@ -483,7 +489,7 @@ def calcular_score_avanzado_v2(item, libro_fuente, autor_fuente, categorias_fuen
     # 1. Autor (MAX 30 pts)
     author_score = 0
     autores = info.get('authors', [])
-    if autor_fuente in autores:
+    if autor_fuente and autor_fuente in autores:
         author_score = SCORE_AUTHOR_MATCH
     score += author_score
     
@@ -495,6 +501,8 @@ def calcular_score_avanzado_v2(item, libro_fuente, autor_fuente, categorias_fuen
     
     if rating > 0:
         rating_base_score = (rating / 5.0) * SCORE_RATING_BASE_MAX
+    
+    # El scoring de conteo de ratings está escalado para llegar a SCORE_RATING_COUNT_MAX
     if ratings_count > 5000:
         rating_count_score = SCORE_RATING_COUNT_MAX
     elif ratings_count > 1000:
@@ -507,24 +515,25 @@ def calcular_score_avanzado_v2(item, libro_fuente, autor_fuente, categorias_fuen
     adjusted_ratings_score = ajustar_por_popularidad(total_ratings_score, ratings_count)
     score += adjusted_ratings_score
     
-    # 3. Categorías (MAX 15 pts)
+    # 3. Categorías (MAX 25 pts - Aumentado)
     category_score = 0
     categorias_item = info.get('categories', [])
     if categorias_item and categorias_fuente:
+        # Coincidencia parcial (más robusto que coincidencia exacta)
         matches = sum(1 for cat_f in categorias_fuente 
-                     for cat_i in categorias_item 
-                     if cat_f.lower() in cat_i.lower() or cat_i.lower() in cat_f.lower())
+                         for cat_i in categorias_item 
+                         if cat_f.lower() in cat_i.lower() or cat_i.lower() in cat_f.lower())
         category_score = min(matches * 5, SCORE_CATEGORY_MAX)
     score += category_score
     
-    # 4. SIMILITUD SEMÁNTICA (MAX 30 pts)
+    # 4. SIMILITUD SEMÁNTICA (MAX 15 pts - Reducido)
     semantic_score = 0
     descripcion_item = info.get('description', '')
     if descripcion_fuente and descripcion_item:
         semantic_score = calcular_similitud_semantica(descripcion_fuente, descripcion_item)
     score += semantic_score
     
-    # 5. Misma serie (BONUS 20 pts)
+    # 5. Misma serie (BONUS 30 pts - Aumentado)
     series_score = 0
     titulo_item = info.get('title', '')
     titulo_fuente = libro_fuente.get('title', '')
@@ -640,6 +649,7 @@ def extraer_keywords(libro_info):
     # Normalizar las palabras clave extraídas
     clean_keywords = [normalizar_texto(k) for k in list(keywords) if normalizar_texto(k) and normalizar_texto(k) not in STOP_WORDS]
     
+    # Se limita a 10 keywords principales
     return clean_keywords[:10]
 
 
@@ -748,9 +758,14 @@ def recomendar_libros(request):
             break
     
     # Si no se encontró un libro completo, usar el primer resultado
-    if not libro_fuente:
+    if not libro_fuente and data['items']:
         libro_fuente = data['items'][0]['volumeInfo']
         libro_id_fuente = data['items'][0].get('id')
+
+    # Si `libro_fuente` sigue siendo None, algo salió muy mal.
+    if not libro_fuente:
+         return Response({"error": "No se pudo extraer información de la fuente."}, status=500)
+
 
     # Extraer info de la fuente
     titulo_fuente = libro_fuente.get('title', '')
@@ -775,6 +790,7 @@ def recomendar_libros(request):
         # --- PASO 4: BÚSQUEDA MULTI-FUENTE ASÍNCRONA ---
         try:
             # Ejecutar búsquedas en paralelo
+            # Es vital crear un nuevo loop si la vista se ejecuta en un hilo de Django/DRF
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             
@@ -832,7 +848,7 @@ def recomendar_libros(request):
     
     # Limpiar score interno y preparar respuesta
     for libro in recomendaciones_finales:
-        score_debug = libro['score_interno']
+        # score_debug = libro['score_interno'] # Descomentar para debug
         del libro['score_interno']
         # libro['score_debug'] = round(score_debug, 2) # Descomentar para debug
     
@@ -847,7 +863,8 @@ def recomendar_libros(request):
         "basado_en": mensaje,
         "total_encontradas": len(recomendaciones_finales),
         "mejoras_aplicadas": [
-            "Embeddings semánticos para similitud profunda",
+            "Embeddings semánticos deshabilitados (usando keywords)",
+            "Ponderación ajustada para priorizar Categoría y Series",
             "Detección de series y sagas",
             "Búsquedas asíncronas paralelas (5x más rápido)",
             "Integración de Open Library y compensación de datos faltantes",

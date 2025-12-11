@@ -161,6 +161,5 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     
-    # ⚠️ AÑADE AQUÍ LA URL DE TU FRONTEND DE VERCEL/NETLIFY DESPUÉS DE OBTENERLA
-    # EJEMPLO: "https://nombre-de-tu-app.vercel.app", 
+    "https://librujula.vercel.app"
 ]

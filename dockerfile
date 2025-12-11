@@ -7,7 +7,6 @@ FROM python:3.11 AS builder
 WORKDIR /app
 
 # 1. Actualizar el sistema e instalar dependencias de compilación
-# Usamos libopenblas-dev (moderno)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential libopenblas-dev
 
@@ -45,6 +44,5 @@ RUN python manage.py collectstatic --no-input
 # Exponer el puerto por defecto de Fly.io
 EXPOSE 8080
 
-# 💥 INSTRUCCIÓN CRUCIAL: Ejecuta 'migrate' para inicializar la DB SQLite 
-# antes de iniciar Gunicorn. Esto previene el fallo en runtime.
-CMD python manage.py migrate && gunicorn --bind 0.0.0.0:8080 --workers 1 --threads 1 core.wsgi:application
+# 🚀 FIX FINAL: Usamos 'python -m gunicorn' para asegurar que el ejecutable sea encontrado
+CMD python manage.py migrate && python -m gunicorn --bind 0.0.0.0:8080 --workers 1 --threads 1 core.wsgi:application

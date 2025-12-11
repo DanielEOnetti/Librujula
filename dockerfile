@@ -44,5 +44,6 @@ RUN python manage.py collectstatic --no-input
 # Exponer el puerto por defecto de Fly.io
 EXPOSE 8080
 
-# 🚀 FIX FINAL: Usamos 'python -m gunicorn' para asegurar que el ejecutable sea encontrado
-CMD python manage.py migrate && python -m gunicorn --bind 0.0.0.0:8080 --workers 1 --threads 1 core.wsgi:application
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+CMD ["/usr/local/bin/entrypoint.sh"]
